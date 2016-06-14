@@ -4,6 +4,8 @@ import (
   "fmt"
   "os"
   "net"
+  "bufio"
+  "io/ioutil"
   "github.com/BurntSushi/toml"
 )
 /*
@@ -13,19 +15,17 @@ import (
 import "C"
 
 type Config struct {
-  controllerIP  string
-}
-
-func ReadConfig() Config {
-  var config Config
-  _, err := toml.DecodeFile("./carrc", &config);
-  checkError(err)
-  return config
+  ServerAddr string
 }
 
 func main() {
-  config := ReadConfig()
-  service := config.controllerIP
+  var config Config
+  f, err := ioutil.ReadFile("carrc");
+  checkError(err)
+  if _, err := toml.Decode(string(f), &config); err != nil {
+    checkError(err)
+  }
+  service := config.ServerAddr
 
   for {
     tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
@@ -38,17 +38,11 @@ func main() {
     }
     fmt.Println("Connected")
 
-    for {
-      char := make([]byte, 1)
-      _, err = conn.Read(char)
-      print(string(char))
-      if err != nil {
-        fmt.Println("\nConnection lost")
-        break
-      }
+    scanner := bufio.NewScanner(conn)
+    for scanner.Scan() {
+      fmt.Println(scanner.Text())
     }
   }
-  os.Exit(0)
 }
 
 func checkError(err error) {
