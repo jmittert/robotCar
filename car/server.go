@@ -1,7 +1,7 @@
 package main
 
 import ("fmt"
-"joystick"
+"github.com/jmittert/joystick"
 "net"
 "strconv"
 )
