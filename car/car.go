@@ -4,10 +4,28 @@ import (
   "fmt"
   "os"
   "net"
+  "github.com/BurntSushi/toml"
 )
+/*
+#cgo LDFLAGS: -lwiringPi
+#include <wiringPi.h>
+*/
+import "C"
+
+type Config struct {
+  controllerIP  string
+}
+
+func ReadConfig() Config {
+  var config Config
+  _, err := toml.DecodeFile("./carrc", &config);
+  checkError(err)
+  return config
+}
 
 func main() {
-  service := "pi:2718"
+  config := ReadConfig()
+  service := config.controllerIP
 
   for {
     tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
