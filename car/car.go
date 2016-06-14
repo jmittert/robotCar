@@ -4,6 +4,7 @@ import (
   "fmt"
   "os"
   "net"
+  "strings"
   "bufio"
   "io/ioutil"
   "github.com/BurntSushi/toml"
@@ -11,6 +12,10 @@ import (
 /*
 #cgo LDFLAGS: -lwiringPi
 #include <wiringPi.h>
+int A1 = 0;
+int A2 = 1;
+int B1 = 3;
+int B2 = 4;
 */
 import "C"
 
@@ -19,6 +24,12 @@ type Config struct {
 }
 
 func main() {
+  C.wiringPiSetup()
+  C.pinMode(C.A1, C.OUTPUT)
+  C.pinMode(C.A2, C.OUTPUT)
+  C.pinMode(C.B1, C.OUTPUT)
+  C.pinMode(C.B2, C.OUTPUT)
+
   var config Config
   f, err := ioutil.ReadFile("carrc");
   checkError(err)
@@ -36,11 +47,23 @@ func main() {
     if err != nil {
       continue
     }
-    fmt.Println("Connected")
-
     scanner := bufio.NewScanner(conn)
     for scanner.Scan() {
       fmt.Println(scanner.Text())
+      strs := strings.Split(scanner.Text(), " ")
+      if strs[0] == "5" {
+        if strs[1][0] != '-' {
+          C.digitalWrite(C.A1, C.HIGH)
+          C.digitalWrite(C.A2, C.LOW)
+          C.digitalWrite(C.B1, C.HIGH)
+          C.digitalWrite(C.B2, C.LOW)
+        } else {
+          C.digitalWrite(C.A1, C.LOW)
+          C.digitalWrite(C.A2, C.LOW)
+          C.digitalWrite(C.B1, C.LOW)
+          C.digitalWrite(C.B2, C.LOW)
+        }
+      }
     }
   }
 }

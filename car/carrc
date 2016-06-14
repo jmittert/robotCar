@@ -1,1 +1,1 @@
-ServerAddr = "SERVER_ADDR"
+ServerAddr = "localhost:2718"

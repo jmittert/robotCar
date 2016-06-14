@@ -19,7 +19,7 @@ func main() {
 
     for {
       event := joystick.GetJsEvent()
-      fmt.Println(strconv.Itoa(event.Value), " ", strconv.Itoa(event.Number))
+      fmt.Println(strconv.Itoa(event.Number), " ", strconv.Itoa(event.Value))
       conn.Write([]byte(strconv.Itoa(event.Number)))
       conn.Write([]byte(" "))
       conn.Write([]byte(strconv.Itoa(event.Value)))
