@@ -3,11 +3,11 @@ package main
 import (
   "fmt"
   "os"
+  "io"
   "net"
-  "strings"
-  "bufio"
   "io/ioutil"
   "github.com/BurntSushi/toml"
+  "github.com/jmittert/xb360ctrl"
 )
 /*
 #cgo LDFLAGS: -lwiringPi
@@ -38,6 +38,8 @@ func main() {
   }
   service := config.ServerAddr
 
+  bytes := make([]byte, 8)
+  var xbState xb360ctrl.Xbc_state
   for {
     tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
     if err != nil {
@@ -47,22 +49,30 @@ func main() {
     if err != nil {
       continue
     }
-    scanner := bufio.NewScanner(conn)
-    for scanner.Scan() {
-      fmt.Println(scanner.Text())
-      strs := strings.Split(scanner.Text(), " ")
-      if strs[0] == "5" {
-        if strs[1][0] != '-' {
-          C.digitalWrite(C.A1, C.HIGH)
-          C.digitalWrite(C.A2, C.LOW)
-          C.digitalWrite(C.B1, C.HIGH)
-          C.digitalWrite(C.B2, C.LOW)
-        } else {
-          C.digitalWrite(C.A1, C.LOW)
-          C.digitalWrite(C.A2, C.LOW)
-          C.digitalWrite(C.B1, C.LOW)
-          C.digitalWrite(C.B2, C.LOW)
+    for {
+      count, err := conn.Read(bytes)
+      if count == 0 && err == io.EOF {
+        // On EOF, disconnect and look for another connection
+        fmt.Println("EOF!")
+        conn.Close()
+        break;
+      }
+      if count != 8 {
+        fmt.Println("Got ", count, "/8 bytes")
+        // Try to read in the remaining bytes
+        remaining := 8 - count
+        for remaining > 0 {
+          shortBytes := make([]byte, remaining)
+          scount, _ := conn.Read(shortBytes)
+          copy(bytes[count:count+scount], shortBytes)
+          remaining -= scount
         }
+      }
+      var e xb360ctrl.Xbc_event
+      e.UnMarshalBinary(bytes)
+      xb360ctrl.UpdateState(&e, &xbState)
+      if xbState.RTrigger > 0 {
+        fmt.Println("FORWARDS!")
       }
     }
   }
