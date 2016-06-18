@@ -3,15 +3,37 @@ package main
 import (
   "github.com/jmittert/xb360ctrl"
   "net"
+  "os"
+  "os/signal"
+  "syscall"
+//  "fmt"
 )
 
-
+func cleanup(fd int, conn net.Conn) {
+  xb360ctrl.Close(fd)
+  if conn != nil {
+    conn.Close()
+  }
+}
 func main() {
+  xb360ctrl.DebugModeOn()
   service := ":2718"
   listener,_ := net.Listen("tcp", service)
   fd := xb360ctrl.Init("/dev/input/js0")
+  var conn net.Conn
+
+  c := make(chan os.Signal, 1)
+  signal.Notify(c, os.Interrupt)
+  signal.Notify(c, syscall.SIGTERM)
+  go func() {
+    <-c
+    cleanup(fd, conn)
+    os.Exit(0)
+  }()
+
   for {
-    conn, err := listener.Accept()
+    var err error
+    conn, err = listener.Accept()
     if err != nil {
       continue
     }
@@ -19,8 +41,11 @@ func main() {
     for {
       e := xb360ctrl.GetXbEvent(fd)
       bin, _ := e.MarshalBinary()
-      conn.Write(bin)
+      //fmt.Println(bin)
+      _, err = conn.Write(bin)
+      if err != nil {
+        break
+      }
     }
   }
-  xb360ctrl.Close(fd)
 }
