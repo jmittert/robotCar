@@ -24,11 +24,11 @@ type Config struct {
 }
 
 func main() {
-  C.wiringPiSetup()
-  C.pinMode(C.A1, C.OUTPUT)
-  C.pinMode(C.A2, C.OUTPUT)
-  C.pinMode(C.B1, C.OUTPUT)
-  C.pinMode(C.B2, C.OUTPUT)
+//  C.wiringPiSetup()
+  //C.pinMode(C.A1, C.OUTPUT)
+  //C.pinMode(C.A2, C.OUTPUT)
+  //C.pinMode(C.B1, C.OUTPUT)
+  //C.pinMode(C.B2, C.OUTPUT)
 
   var config Config
   f, err := ioutil.ReadFile("carrc");
@@ -59,21 +59,26 @@ func main() {
       }
       if count != 8 {
         fmt.Println("Got ", count, "/8 bytes")
-        // Try to read in the remaining bytes
-        remaining := 8 - count
-        for remaining > 0 {
-          shortBytes := make([]byte, remaining)
-          scount, _ := conn.Read(shortBytes)
-          copy(bytes[count:count+scount], shortBytes)
-          remaining -= scount
-        }
+        conn.Close()
+        break;
       }
       var e xb360ctrl.Xbc_event
+      fmt.Println(bytes)
       e.UnMarshalBinary(bytes)
       xb360ctrl.UpdateState(&e, &xbState)
-      if xbState.RTrigger > 0 {
-        fmt.Println("FORWARDS!")
+      if xbState.RTrigger > 5 {
+        C.digitalWrite (C.A1, C.HIGH)
+        C.digitalWrite (C.A2, C.LOW)
+        C.digitalWrite (C.B1, C.HIGH)
+        C.digitalWrite (C.B2, C.LOW)
+      } else {
+        C.digitalWrite (C.A1, C.LOW)
+        C.digitalWrite (C.A2, C.LOW)
+        C.digitalWrite (C.B1, C.LOW)
+        C.digitalWrite (C.B2, C.LOW)
       }
+      fmt.Println(e)
+      fmt.Println(xbState)
     }
   }
 }
