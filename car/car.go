@@ -24,6 +24,7 @@ type Config struct {
 }
 
 func main() {
+  xb360ctrl.DebugModeOn()
 //  C.wiringPiSetup()
   //C.pinMode(C.A1, C.OUTPUT)
   //C.pinMode(C.A2, C.OUTPUT)
@@ -63,7 +64,7 @@ func main() {
         break;
       }
       var e xb360ctrl.Xbc_event
-      fmt.Println(bytes)
+//      fmt.Println(bytes)
       e.UnMarshalBinary(bytes)
       xb360ctrl.UpdateState(&e, &xbState)
       if xbState.RTrigger > 5 {
@@ -77,8 +78,8 @@ func main() {
         C.digitalWrite (C.B1, C.LOW)
         C.digitalWrite (C.B2, C.LOW)
       }
-      fmt.Println(e)
-      fmt.Println(xbState)
+//      fmt.Println(e)
+ //     fmt.Println(xbState)
     }
   }
 }
