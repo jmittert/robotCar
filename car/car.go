@@ -63,6 +63,7 @@ func stateToHw(state *xbc.Xbc_state) {
   var basePwm int = 100
   var leftMod float32 = 1
   var rightMod float32 = 1
+  var newPwm int
   if state.LStickY > 1000 {
     // >1000 -> Go right -> slow down right wheel
     leftMod -= float32(int(state.LStickY)/32768)
@@ -84,7 +85,7 @@ func stateToHw(state *xbc.Xbc_state) {
     C.digitalWrite (C.B1, C.HIGH)
     C.digitalWrite (C.B2, C.LOW)
     modifier := (float32(state.RTrigger) + 32768)/ 65536
-    newPwm := int(float32(basePwm) * modifier)
+    newPwm = int(float32(basePwm) * modifier)
     C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
     C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.LTrigger > -22767 || state.B {
@@ -108,6 +109,9 @@ func stateToHw(state *xbc.Xbc_state) {
     C.softPwmWrite(C.LPWM, 0)
     C.softPwmWrite(C.RPWM, 0)
   }
+  xbc.DEBUG("newPwm: ", newPwm);
+  xbc.DEBUG("leftMod: ", leftMod);
+  xbc.DEBUG("rightMod: ", rightMod);
 
 
 }
