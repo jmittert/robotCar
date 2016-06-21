@@ -11,12 +11,15 @@ import (
   "flag"
 )
 /*
-#cgo LDFLAGS: -lwiringPi
+#cgo LDFLAGS: -lwiringPi -lpthread
 #include <wiringPi.h>
+#include <softPwm.h>
 int A1 = 0;
 int A2 = 1;
+int LPWM = 5;
 int B1 = 3;
 int B2 = 4;
+int RPWM = 6;
 */
 import "C"
 
@@ -56,37 +59,57 @@ func main() {
 
 // Uses the current state of the controller to set the appropriate hw pins
 func stateToHw(state *xbc.Xbc_state) {
-  if state.RTrigger > -22767 || state.A{
+  // Calculate pwm
+  var basePwm int = 100
+  var leftMod float32 = 1
+  var rightMod float32 = 1
+  if state.LStickY > 1000 {
+    // >1000 -> Go right -> slow down right wheel
+    leftMod -= float32(int(state.LStickY)/32768)
+    if leftMod < 0 {
+      leftMod = 0
+    }
+  } else if state.LStickY < 1000 {
+    // <1000 -> Go left -> slow down left wheel
+    rightMod -= float32(int(state.LStickY)/-32768)
+    if rightMod < 0 {
+      rightMod = 0
+    }
+  }
+
+  if state.RTrigger > -22767 || state.A {
     xbc.DEBUG("Fowards")
     C.digitalWrite (C.A1, C.HIGH)
     C.digitalWrite (C.A2, C.LOW)
     C.digitalWrite (C.B1, C.HIGH)
     C.digitalWrite (C.B2, C.LOW)
+    modifier := (float32(state.RTrigger) + 32768)/ 65536
+    newPwm := int(float32(basePwm) * modifier)
+    C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
+    C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.LTrigger > -22767 || state.B {
     xbc.DEBUG("Backwards")
     C.digitalWrite (C.A1, C.LOW)
     C.digitalWrite (C.A2, C.HIGH)
     C.digitalWrite (C.B1, C.LOW)
     C.digitalWrite (C.B2, C.HIGH)
+    modifier := (float32(state.LTrigger) + 32768)/ 65536
+    newPwm := int(float32(basePwm) * modifier)
+    C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
+    C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.DPadX == 32767 {
     xbc.DEBUG("RIGHT")
-    C.digitalWrite (C.A1, C.LOW)
-    C.digitalWrite (C.A2, C.LOW)
-    C.digitalWrite (C.B1, C.LOW)
-    C.digitalWrite (C.B2, C.HIGH)
+    C.softPwmWrite(C.LPWM, 0);
   } else if state.DPadX == -32767 {
     xbc.DEBUG("LEFT")
-    C.digitalWrite (C.A1, C.LOW)
-    C.digitalWrite (C.A2, C.HIGH)
-    C.digitalWrite (C.B1, C.LOW)
-    C.digitalWrite (C.B2, C.LOW)
+    C.softPwmWrite(C.RPWM, 0);
   } else {
     xbc.DEBUG("STOP")
-    C.digitalWrite (C.A1, C.LOW)
-    C.digitalWrite (C.A2, C.LOW)
-    C.digitalWrite (C.B1, C.LOW)
-    C.digitalWrite (C.B2, C.LOW)
+    C.softPwmWrite(C.LPWM, 0)
+    C.softPwmWrite(C.RPWM, 0)
   }
+
+
 }
 
 func checkError(err error) {
@@ -112,6 +135,8 @@ func checkFlags() {
     C.pinMode(C.A2, C.OUTPUT)
     C.pinMode(C.B1, C.OUTPUT)
     C.pinMode(C.B2, C.OUTPUT)
+    C.softPwmCreate(C.LPWM, 0, 100);
+    C.softPwmCreate(C.RPWM, 0, 100);
   }
 
 }
