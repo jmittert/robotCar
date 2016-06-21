@@ -100,10 +100,10 @@ func stateToHw(state *xbc.Xbc_state) {
     C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.DPadX == 32767 {
     xbc.DEBUG("RIGHT")
-    C.softPwmWrite(C.LPWM, 0);
+    C.softPwmWrite(C.RPWM, 0);
   } else if state.DPadX == -32767 {
     xbc.DEBUG("LEFT")
-    C.softPwmWrite(C.RPWM, 0);
+    C.softPwmWrite(C.LPWM, 0);
   } else {
     xbc.DEBUG("STOP")
     C.softPwmWrite(C.LPWM, 0)
