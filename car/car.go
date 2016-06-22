@@ -10,23 +10,12 @@ import (
   xbc "github.com/jmittert/xb360ctrl"
   "flag"
 )
-/*
-#cgo LDFLAGS: -lwiringPi -lpthread
-#include <wiringPi.h>
-#include <softPwm.h>
-int A1 = 0;
-int A2 = 1;
-int LPWM = 5;
-int B1 = 3;
-int B2 = 4;
-int RPWM = 6;
-*/
-import "C"
 
 type Config struct {
   ServerAddr string
 }
 
+var hwState HwState
 func main() {
   checkFlags()
   config := readConfig()
@@ -50,18 +39,15 @@ func main() {
       var e xbc.Xbc_event
       e.UnMarshalBinary(bytes)
       xbc.UpdateState(&e, &xbState)
-      stateToHw(&xbState)
+      stateToHw(&xbState, &hwState)
     }
   }
 }
 
-// Uses the current state of the controller to set the appropriate hw pins
-func stateToHw(state *xbc.Xbc_state) {
-  // Calculate pwm
-  var basePwm int = 100
+func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
+  var basePwm float32 = 100
   var leftMod float32 = 1
   var rightMod float32 = 1
-  var newPwm int
   if state.LStickX < 1000 {
     // <1000 -> Go right -> slow down right wheel
     leftMod -= float32(state.LStickX)/32768
@@ -75,35 +61,32 @@ func stateToHw(state *xbc.Xbc_state) {
       rightMod = 0
     }
   }
-
-  if state.RTrigger > -22767 || state.A {
-    C.digitalWrite (C.A1, C.HIGH)
-    C.digitalWrite (C.A2, C.LOW)
-    C.digitalWrite (C.B1, C.HIGH)
-    C.digitalWrite (C.B2, C.LOW)
+  if state.RTrigger > -22767 {
     modifier := (float32(state.RTrigger) + 32768)/ 65536
-    newPwm = int(float32(basePwm) * modifier)
-    C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
-    C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
-  } else if state.LTrigger > -22767 || state.B {
-    C.digitalWrite (C.A1, C.LOW)
-    C.digitalWrite (C.A2, C.HIGH)
-    C.digitalWrite (C.B1, C.LOW)
-    C.digitalWrite (C.B2, C.HIGH)
+    basePwm = float32(basePwm) * modifier
+  } else if state.LTrigger > -22767 {
     modifier := (float32(state.LTrigger) + 32768)/ 65536
-    newPwm := int(float32(basePwm) * modifier)
-    C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
-    C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
-  } else if state.DPadX == 32767 {
-    C.softPwmWrite(C.RPWM, 0);
-  } else if state.DPadX == -32767 {
-    C.softPwmWrite(C.LPWM, 0);
-  } else {
-    C.softPwmWrite(C.LPWM, 0)
-    C.softPwmWrite(C.RPWM, 0)
+    basePwm = float32(basePwm) * modifier
   }
+  return uint8(leftMod*basePwm), uint8(rightMod*basePwm)
+}
 
-
+// Uses the current state of the controller to set the appropriate hw pins
+func stateToHw(state *xbc.Xbc_state, hwState *HwState) {
+  if state.RTrigger > -22767 {
+    hwState.Write(A1, HIGH)
+    hwState.Write(A2, LOW)
+    hwState.Write(B1, HIGH)
+    hwState.Write(B2, LOW)
+  } else if state.LTrigger > -22767 {
+    hwState.Write(A1, LOW)
+    hwState.Write(A2, HIGH)
+    hwState.Write(B1, LOW)
+    hwState.Write(B2, HIGH)
+  }
+  lpwm, rpwm := calcPWM(state)
+  hwState.WritePWM(RPWM, rpwm)
+  hwState.WritePWM(LPWM, lpwm)
 }
 
 func checkError(err error) {
@@ -124,13 +107,7 @@ func checkFlags() {
   }
 
   if *hwPtr {
-    C.wiringPiSetup()
-    C.pinMode(C.A1, C.OUTPUT)
-    C.pinMode(C.A2, C.OUTPUT)
-    C.pinMode(C.B1, C.OUTPUT)
-    C.pinMode(C.B2, C.OUTPUT)
-    C.softPwmCreate(C.LPWM, 0, 100);
-    C.softPwmCreate(C.RPWM, 0, 100);
+    hwState.Setup()
   }
 
 }
