@@ -41,11 +41,9 @@ func main() {
       count, err := conn.Read(bytes)
       if count == 0 && err == io.EOF {
         // On EOF, disconnect and look for another connection
-        fmt.Println("EOF!")
         conn.Close()
         break;
       } else if count != 8 {
-        fmt.Println("Got ", count, "/8 bytes")
         conn.Close()
         break;
       }
@@ -64,22 +62,21 @@ func stateToHw(state *xbc.Xbc_state) {
   var leftMod float32 = 1
   var rightMod float32 = 1
   var newPwm int
-  if state.LStickY > 1000 {
-    // >1000 -> Go right -> slow down right wheel
-    leftMod -= float32(int(state.LStickY)/32768)
+  if state.LStickX < 1000 {
+    // <1000 -> Go right -> slow down right wheel
+    leftMod -= float32(state.LStickX)/32768
     if leftMod < 0 {
       leftMod = 0
     }
-  } else if state.LStickY < 1000 {
-    // <1000 -> Go left -> slow down left wheel
-    rightMod -= float32(int(state.LStickY)/-32768)
+  } else if state.LStickX > 1000 {
+    // >1000 -> Go left -> slow down left wheel
+    rightMod -= float32(state.LStickX)/-32768
     if rightMod < 0 {
       rightMod = 0
     }
   }
 
   if state.RTrigger > -22767 || state.A {
-    xbc.DEBUG("Fowards")
     C.digitalWrite (C.A1, C.HIGH)
     C.digitalWrite (C.A2, C.LOW)
     C.digitalWrite (C.B1, C.HIGH)
@@ -89,7 +86,6 @@ func stateToHw(state *xbc.Xbc_state) {
     C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
     C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.LTrigger > -22767 || state.B {
-    xbc.DEBUG("Backwards")
     C.digitalWrite (C.A1, C.LOW)
     C.digitalWrite (C.A2, C.HIGH)
     C.digitalWrite (C.B1, C.LOW)
@@ -99,19 +95,13 @@ func stateToHw(state *xbc.Xbc_state) {
     C.softPwmWrite(C.LPWM, C.int(float32(newPwm) * leftMod))
     C.softPwmWrite(C.RPWM, C.int(float32(newPwm) * rightMod))
   } else if state.DPadX == 32767 {
-    xbc.DEBUG("RIGHT")
     C.softPwmWrite(C.RPWM, 0);
   } else if state.DPadX == -32767 {
-    xbc.DEBUG("LEFT")
     C.softPwmWrite(C.LPWM, 0);
   } else {
-    xbc.DEBUG("STOP")
     C.softPwmWrite(C.LPWM, 0)
     C.softPwmWrite(C.RPWM, 0)
   }
-  xbc.DEBUG("newPwm: ", newPwm);
-  xbc.DEBUG("leftMod: ", leftMod);
-  xbc.DEBUG("rightMod: ", rightMod);
 
 
 }
