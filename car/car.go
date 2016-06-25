@@ -7,16 +7,17 @@ import (
   "net"
   "io/ioutil"
   "github.com/BurntSushi/toml"
-  xbc "github.com/jmittert/xb360ctrl"
   "flag"
   "time"
+  hw "github.com/jmittert/robotCar"
+  xbc "github.com/jmittert/xb360ctrl"
 )
 
 type Config struct {
   ServerAddr string
 }
 
-var hwState HwState
+var hwState hw.HwState
 func main() {
   checkFlags()
   config := readConfig()
@@ -42,7 +43,7 @@ func main() {
       xbc.UpdateState(&e, &xbState)
       stateToHw(&xbState, &hwState)
       loopCount++
-      fmt.Printf("e/s: %f\r", loopCount / t.Now().Sub(t).Seconds())
+      fmt.Printf("e/s: %f\r", loopCount / time.Now().Sub(t).Seconds())
     }
   }
 }
@@ -75,21 +76,21 @@ func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
 }
 
 // Uses the current state of the controller to set the appropriate hw pins
-func stateToHw(state *xbc.Xbc_state, hwState *HwState) {
+func stateToHw(state *xbc.Xbc_state, hwState *hw.HwState) {
   if state.RTrigger > -22767 {
-    hwState.Write(A1, HIGH)
-    hwState.Write(A2, LOW)
-    hwState.Write(B1, HIGH)
-    hwState.Write(B2, LOW)
+    hwState.Write(hw.A1, hw.HIGH)
+    hwState.Write(hw.A2, hw.LOW)
+    hwState.Write(hw.B1, hw.HIGH)
+    hwState.Write(hw.B2, hw.LOW)
   } else if state.LTrigger > -22767 {
-    hwState.Write(A1, LOW)
-    hwState.Write(A2, HIGH)
-    hwState.Write(B1, LOW)
-    hwState.Write(B2, HIGH)
+    hwState.Write(hw.A1, hw.LOW)
+    hwState.Write(hw.A2, hw.HIGH)
+    hwState.Write(hw.B1, hw.LOW)
+    hwState.Write(hw.B2, hw.HIGH)
   }
   lpwm, rpwm := calcPWM(state)
-  hwState.WritePWM(RPWM, rpwm)
-  hwState.WritePWM(LPWM, lpwm)
+  hwState.WritePWM(hw.RPWM, rpwm)
+  hwState.WritePWM(hw.LPWM, lpwm)
 }
 
 func checkError(err error) {

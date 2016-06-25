@@ -1,4 +1,4 @@
-package main
+package robotCar
 import "fmt"
 /*
 #cgo LDFLAGS: -lwiringPi -lpthread
