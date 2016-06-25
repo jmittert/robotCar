@@ -29,6 +29,7 @@ func main() {
     conn := connect(serverAddr)
     var loopCount float64 = 0
     t := time.Now()
+
     for {
       count, err := conn.Read(bytes)
       if count != 8 || err == io.EOF {
@@ -41,7 +42,7 @@ func main() {
       xbc.UpdateState(&e, &xbState)
       stateToHw(&xbState, &hwState)
       loopCount++
-      fmt.Printf("e/s: %f\r", loopCount / t.Sub(time.Now()).Seconds())
+      fmt.Printf("e/s: %f\r", loopCount / t.Now().Sub(t).Seconds())
     }
   }
 }

@@ -50,7 +50,7 @@ func main() {
         break
       }
       loopCount++
-      fmt.Printf("e/s: %f\r", loopCount / t.Sub(time.Now()).Seconds())
+      fmt.Printf("e/s: %f\r", loopCount / time.Now().Sub(t).Seconds())
     }
   }
 }
