@@ -9,6 +9,7 @@ import (
   "github.com/BurntSushi/toml"
   xbc "github.com/jmittert/xb360ctrl"
   "flag"
+  "time"
 )
 
 type Config struct {
@@ -26,13 +27,12 @@ func main() {
 
   for {
     conn := connect(serverAddr)
+    var loopCount float64 = 0
+    t := time.Now()
     for {
       count, err := conn.Read(bytes)
-      if count == 0 && err == io.EOF {
+      if count != 8 || err == io.EOF {
         // On EOF, disconnect and look for another connection
-        conn.Close()
-        break;
-      } else if count != 8 {
         conn.Close()
         break;
       }
@@ -40,6 +40,8 @@ func main() {
       e.UnMarshalBinary(bytes)
       xbc.UpdateState(&e, &xbState)
       stateToHw(&xbState, &hwState)
+      loopCount++
+      fmt.Printf("e/s: %f\r", loopCount / t.Sub(time.Now()).Seconds())
     }
   }
 }

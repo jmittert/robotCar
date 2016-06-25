@@ -6,7 +6,8 @@ import (
   "os"
   "os/signal"
   "syscall"
-//  "fmt"
+  "time"
+  "fmt"
 )
 
 func cleanup(fd int, conn net.Conn) {
@@ -31,6 +32,8 @@ func main() {
     os.Exit(0)
   }()
 
+  var loopCount float64 = 0
+  t := time.Now()
   for {
     var err error
     conn, err = listener.Accept()
@@ -46,6 +49,8 @@ func main() {
       if err != nil {
         break
       }
+      loopCount++
+      fmt.Printf("e/s: %f\r", loopCount / t.Sub(time.Now()).Seconds())
     }
   }
 }
