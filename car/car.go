@@ -9,7 +9,7 @@ import (
   "github.com/BurntSushi/toml"
   "flag"
   "time"
-  hw "github.com/jmittert/robotCar"
+  hw "github.com/jmittert/robotCar/lib"
   xbc "github.com/jmittert/xb360ctrl"
 )
 
