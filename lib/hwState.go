@@ -1,5 +1,4 @@
 package robotCar
-import "fmt"
 /*
 #cgo LDFLAGS: -lwiringPi -lpthread
 #include <wiringPi.h>
@@ -39,57 +38,14 @@ type HwState struct {
   RPWM uint8
 }
 
-// write writes the given value to the specified pin. It returns true
-// if the pin was updated, otherwise it returns false.
-func (state *HwState) Write(pin GpioPin, value byte) (wrote bool, err error) {
-  wrote = false
-  switch pin {
-  case A1:
-    if state.A1 != value {
-      C.digitalWrite (C.A1, C.int(value))
-      wrote = true;
-    }
-  case A2:
-    if state.A2 != value {
-      C.digitalWrite (C.A2, C.int(value))
-      wrote = true;
-    }
-  case B1:
-    if state.B1 != value {
-      C.digitalWrite (C.B1, C.int(value))
-      wrote = true;
-    }
-  case B2:
-    if state.B2 != value {
-      C.digitalWrite (C.B2, C.int(value))
-      wrote = true;
-    }
-  default:
-    err = fmt.Errorf("%d is not a valid pin", pin)
-  }
-  return
-}
-
-// writePWM writes the given pwm value to the specified pin. It returns true
-// if the pin was updated, otherwise it returns false.
-func (state *HwState) WritePWM(pin PwmPin, value uint8) (wrote bool, err error) {
-  wrote = false
-  if value > 100 {
-    return wrote, fmt.Errorf("%d is not a valid pwm value", value)
-  }
-  switch pin {
-  case LPWM:
-    if state.LPWM != value {
-      C.softPwmWrite(C.LPWM, C.int(value))
-    }
-  case RPWM:
-    if state.RPWM != value {
-      C.softPwmWrite(C.RPWM, C.int(value))
-    }
-  default:
-    err = fmt.Errorf("%d is not a valid pin", pin)
-  }
-  return
+// Write writes the hardware state to the hardware
+func (state *HwState) Write() {
+  C.digitalWrite(C.A1, C.int(state.A1))
+  C.digitalWrite(C.A2, C.int(state.A2))
+  C.digitalWrite(C.B1, C.int(state.B1))
+  C.digitalWrite(C.B2, C.int(state.B2))
+  C.softPwmWrite(C.LPWM, C.int(state.LPWM))
+  C.softPwmWrite(C.RPWM, C.int(state.RPWM))
 }
 
 func (state *HwState) Setup() {
@@ -100,4 +56,29 @@ func (state *HwState) Setup() {
     C.pinMode(C.B2, C.OUTPUT)
     C.softPwmCreate(C.LPWM, 0, 100);
     C.softPwmCreate(C.RPWM, 0, 100);
+}
+
+// MarshalBinary encodes the state into binary and returns the result
+func (s *HwState) MarshalBinary() (data []byte, err error) {
+  // 32 + 16 + 8 + 8 = 64bits = 8 bytes
+  a := make([]byte, 6)
+
+  a[0] = byte(s.A1)
+  a[1] = byte(s.A2)
+  a[2] = byte(s.B1)
+  a[3] = byte(s.B2)
+  a[4] = byte(s.LPWM)
+  a[5] = byte(s.RPWM)
+  return a, nil
+}
+
+// UnMarshalBinary unencodes a marshalled state
+func (s *HwState) UnMarshalBinary(data []byte) (err error) {
+  s.A1   = data[0]
+  s.A2   = data[1]
+  s.B1   = data[2]
+  s.B2   = data[3]
+  s.LPWM = data[4]
+  s.RPWM = data[4]
+  return nil
 }
