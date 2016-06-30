@@ -6,7 +6,6 @@ import (
   "os/signal"
   "syscall"
   "time"
-  "fmt"
   rc "github.com/jmittert/robotCar/lib"
   xbc "github.com/jmittert/xb360ctrl"
 )
@@ -73,15 +72,15 @@ func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
   var rightMod float32 = 1
   if state.LStickX > 1000 {
     // <1000 -> Go right -> slow down right wheel
-    rightMod -= float32(state.LStickX)/32768
-    if rightMod < 0 {
-      rightMod = 0
+    leftMod -= float32(state.LStickX)/32768
+    if leftMod < 0 {
+      leftMod = 0
     }
   } else if state.LStickX < -1000 {
     // >1000 -> Go left -> slow down left wheel
-    leftMod -= float32(state.LStickX)/-32768
-    if leftMod < 0 {
-      leftMod = 0
+    rightMod -= float32(state.LStickX)/-32768
+    if rightMod < 0 {
+      rightMod = 0
     }
   }
   if state.RTrigger > -22767 {
