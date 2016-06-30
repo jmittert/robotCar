@@ -40,7 +40,6 @@ func main() {
   var hwState rc.HwState
 
   var loopCount float64 = 0
-  start := time.Now()
   last := time.Now()
 
   for {
@@ -53,7 +52,6 @@ func main() {
     for {
       e := xbc.GetXbEvent(fd)
       xbc.UpdateState(e, &xbState)
-
       stateToHw(&xbState, &hwState)
 
       // Send the state every 20ms
@@ -64,8 +62,6 @@ func main() {
           break
         }
         loopCount++
-        last = time.Now()
-        fmt.Printf("e/s: %f\r", loopCount / time.Since(start).Seconds())
       }
     }
   }
@@ -75,17 +71,17 @@ func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
   var basePwm float32 = 100
   var leftMod float32 = 1
   var rightMod float32 = 1
-  if state.LStickX < 1000 {
+  if state.LStickX > 1000 {
     // <1000 -> Go right -> slow down right wheel
-    leftMod -= float32(state.LStickX)/32768
-    if leftMod < 0 {
-      leftMod = 0
-    }
-  } else if state.LStickX > 1000 {
-    // >1000 -> Go left -> slow down left wheel
-    rightMod -= float32(state.LStickX)/-32768
+    rightMod -= float32(state.LStickX)/32768
     if rightMod < 0 {
       rightMod = 0
+    }
+  } else if state.LStickX < -1000 {
+    // >1000 -> Go left -> slow down left wheel
+    leftMod -= float32(state.LStickX)/-32768
+    if leftMod < 0 {
+      leftMod = 0
     }
   }
   if state.RTrigger > -22767 {
@@ -94,6 +90,8 @@ func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
   } else if state.LTrigger > -22767 {
     modifier := (float32(state.LTrigger) + 32768)/ 65536
     basePwm = float32(basePwm) * modifier
+  } else {
+    basePwm = 0
   }
   return uint8(leftMod*basePwm), uint8(rightMod*basePwm)
 }
@@ -112,6 +110,6 @@ func stateToHw(state *xbc.Xbc_state, hwState *rc.HwState) {
     hwState.B2 = rc.HIGH
   }
   lpwm, rpwm := calcPWM(state)
-  hwState.RPWM = rpwm
   hwState.LPWM = lpwm
+  hwState.RPWM = rpwm
 }

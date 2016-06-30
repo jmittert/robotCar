@@ -8,7 +8,6 @@ import (
   "io/ioutil"
   "github.com/BurntSushi/toml"
   "flag"
-  "time"
   rc "github.com/jmittert/robotCar/lib"
   xbc "github.com/jmittert/xb360ctrl"
 )
@@ -26,8 +25,6 @@ func main() {
 
   for {
     conn := connect(serverAddr)
-    var loopCount float64 = 0
-    t := time.Now()
     for {
       count, err := conn.Read(bytes)
       if count != 6 || err == io.EOF {
@@ -37,8 +34,6 @@ func main() {
       }
       hw.UnMarshalBinary(bytes)
       hw.Write()
-      loopCount++
-      fmt.Printf("e/s: %f\r", loopCount / time.Now().Sub(t).Seconds())
     }
   }
 }

@@ -79,6 +79,6 @@ func (s *HwState) UnMarshalBinary(data []byte) (err error) {
   s.B1   = data[2]
   s.B2   = data[3]
   s.LPWM = data[4]
-  s.RPWM = data[4]
+  s.RPWM = data[5]
   return nil
 }

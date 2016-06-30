@@ -69,7 +69,7 @@ func TestMarshall(t *testing.T) {
   e.B1 = 1;
   e.B2 = 0;
   e.LPWM = 255;
-  e.RPWM = 255;
+  e.RPWM = 254;
 
   data, _ = e.MarshalBinary()
 
