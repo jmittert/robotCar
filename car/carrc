@@ -1,1 +1,5 @@
 ServerAddr = "localhost:2718"
+DbAddr     = "localhost:54432"
+DbUser     = "USERNAME"
+DbPass     = "PASSWORD"
+DbName     = "DBNAME"
