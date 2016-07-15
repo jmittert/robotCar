@@ -62,12 +62,12 @@ func main() {
     cleanup()
     os.Exit(0)
   }()
-  stmt, err := db.Prepare("INSERT INTO states (a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6);")
+  stmt, err := db.Prepare("INSERT INTO images (image, a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6, $7);")
   checkError(err)
   for {
     conn = connect(serverAddr)
+    last := time.Now()
     for {
-      last := time.Now()
       count, err := conn.Read(bytes)
       if count != 6 || err == io.EOF {
         // On EOF, disconnect and look for another connection
@@ -77,10 +77,12 @@ func main() {
       hw.UnMarshalBinary(bytes)
       hw.Write()
       // Save the state every half second
-      if time.Since(last).Nanoseconds() > 50000000 {
-        var result sql.Result
-        result, err = stmt.Exec(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
-        fmt.Println(result, err)
+      if time.Since(last).Nanoseconds() > 500000000 {
+        var img []byte
+        img, err = ioutil.ReadFile("test.jpg")
+        checkError(err)
+        stmt.Exec(img, hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+        last = time.Now()
       }
     }
   }
