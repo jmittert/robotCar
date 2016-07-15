@@ -14,6 +14,7 @@ import (
   xbc "github.com/jmittert/xb360ctrl"
   "database/sql"
   _ "github.com/lib/pq"
+  "time"
 )
 
 type Config struct {
@@ -26,26 +27,28 @@ type Config struct {
 
 var hw rc.HwState
 var db *sql.DB
+var conn net.Conn
 
-func cleanup(conn net.Conn, db *sql.DB, rc rc.HwState) {
+func cleanup() {
   if conn != nil {
     conn.Close()
   }
   if db != nil {
     db.Close()
   }
-  rc.A1 = 0
-  rc.A2 = 0
-  rc.B1 = 0
-  rc.B2 = 0
-  rc.LPWM = 0
-  rc.RPWM = 0
-  rc.Write()
+  hw.A1 = 0
+  hw.A2 = 0
+  hw.B1 = 0
+  hw.B2 = 0
+  hw.LPWM = 0
+  hw.RPWM = 0
+  hw.Write()
 }
 
 func main() {
   checkFlags()
   config := readConfig()
+  connectToDb(config)
   serverAddr := config.ServerAddr
   bytes := make([]byte, 6)
 
@@ -56,12 +59,15 @@ func main() {
   signal.Notify(c, syscall.SIGTERM)
   go func() {
     <-c
-    cleanup(conn, db, hw)
+    cleanup()
     os.Exit(0)
   }()
+  stmt, err := db.Prepare("INSERT INTO states (a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6);")
+  checkError(err)
   for {
     conn = connect(serverAddr)
     for {
+      last := time.Now()
       count, err := conn.Read(bytes)
       if count != 6 || err == io.EOF {
         // On EOF, disconnect and look for another connection
@@ -70,6 +76,12 @@ func main() {
       }
       hw.UnMarshalBinary(bytes)
       hw.Write()
+      // Save the state every half second
+      if time.Since(last).Nanoseconds() > 50000000 {
+        var result sql.Result
+        result, err = stmt.Exec(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+        fmt.Println(result, err)
+      }
     }
   }
 }
@@ -77,6 +89,7 @@ func main() {
 func checkError(err error) {
   if err != nil {
     fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
+    cleanup();
     os.Exit(1)
   }
 }
@@ -84,7 +97,7 @@ func checkError(err error) {
 // checkFlags is a help function to read and handle the command line flags
 func checkFlags() {
   dbgPtr := flag.Bool("dbg", false, "Set debug mode")
-  hwPtr := flag.Bool("hw", true, "Enable talking with hardware")
+  hwPtr  := flag.Bool("hw", true, "Enable talking with hardware")
 
   flag.Parse()
   if *dbgPtr {
@@ -94,7 +107,6 @@ func checkFlags() {
   if *hwPtr {
     hw.Setup()
   }
-
 }
 
 func readConfig() Config {
@@ -120,7 +132,7 @@ func connectToDb(config Config) {
   name := config.DbName
   pass := config.DbName
   var err error
-  db, err = sql.Open("postgresql",
-  fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=require", user, pass, addr, name))
+  db, err = sql.Open("postgres",
+  fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", user, pass, addr, name))
   checkError(err)
 }
