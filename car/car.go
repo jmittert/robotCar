@@ -113,7 +113,7 @@ func checkFlags() {
 
 func readConfig() Config {
   var config Config
-  f, err := ioutil.ReadFile("carrc");
+  f, err := ioutil.ReadFile("/etc/carrc");
   checkError(err)
   _, err = toml.Decode(string(f), &config)
   checkError(err)
