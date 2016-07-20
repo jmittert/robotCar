@@ -28,6 +28,7 @@ type Config struct {
 var hw rc.HwState
 var db *sql.DB
 var conn net.Conn
+var proc *os.Process
 
 func cleanup() {
   if conn != nil {
@@ -43,6 +44,8 @@ func cleanup() {
   hw.LPWM = 0
   hw.RPWM = 0
   hw.Write()
+
+  proc.Signal(syscall.SIGINT)
 }
 
 func main() {
@@ -79,7 +82,7 @@ func main() {
       // Save the state every half second
       if time.Since(last).Nanoseconds() > 500000000 {
         var img []byte
-        img, err = ioutil.ReadFile("test.jpg")
+        img, err = ioutil.ReadFile(getLatestPic())
         checkError(err)
         stmt.Exec(img, hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
         last = time.Now()
@@ -137,4 +140,19 @@ func connectToDb(config Config) {
   db, err = sql.Open("postgres",
   fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", user, pass, addr, name))
   checkError(err)
+}
+
+func startCamera() {
+  var err error
+  args := []string{"-i", "input_raspicam.so -fps 2 -vf", "-o", "output_file.so -f /tmp/pics -s 5"}
+  proc, err = os.StartProcess("mjpg_streamer", args, nil)
+  checkError(err)
+}
+
+func getLatestPic() string{
+  files, err := ioutil.ReadDir("/tmp/pics")
+  checkError(err)
+  // We want the most recent file. Since the file are saved by
+  // date, the last one will be the most recent
+  return files[len(files)].Name()
 }
