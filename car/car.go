@@ -144,6 +144,7 @@ func connectToDb(config Config) {
 
 func startCamera() {
   var err error
+  os.Mkdir("/tmp/pics", os.ModeDir & os.ModeTemporary)
   args := []string{"-i", "input_raspicam.so -fps 2 -vf", "-o", "output_file.so -f /tmp/pics -s 5"}
   proc, err = os.StartProcess("mjpg_streamer", args, nil)
   checkError(err)
