@@ -45,13 +45,16 @@ func cleanup() {
   hw.RPWM = 0
   hw.Write()
 
-  proc.Signal(syscall.SIGINT)
+  if proc != nil {
+    proc.Signal(syscall.SIGINT)
+  }
 }
 
 func main() {
   checkFlags()
   config := readConfig()
   connectToDb(config)
+  //startCamera()
   serverAddr := config.ServerAddr
   bytes := make([]byte, 6)
 
@@ -82,9 +85,12 @@ func main() {
       // Save the state every half second
       if time.Since(last).Nanoseconds() > 500000000 {
         var img []byte
-        img, err = ioutil.ReadFile(getLatestPic())
-        checkError(err)
-        stmt.Exec(img, hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+        fileName := getLatestPic()
+        if fileName != "" {
+          img, err = ioutil.ReadFile(fileName)
+          checkError(err)
+          stmt.Exec(img, hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+        }
         last = time.Now()
       }
     }
@@ -144,9 +150,16 @@ func connectToDb(config Config) {
 
 func startCamera() {
   var err error
+  attrs := new(os.ProcAttr)
+  attrs.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
   os.Mkdir("/tmp/pics", os.ModeDir & os.ModeTemporary)
-  args := []string{"-i", "input_raspicam.so -fps 2 -vf", "-o", "output_file.so -f /tmp/pics -s 5"}
-  proc, err = os.StartProcess("mjpg_streamer", args, nil)
+  args := []string{"-i", "/usr/local/lib/mjpg-streamer/input_raspicam.so -fps 2 -vf", "-o", "/usr/local/lib/mjpg-streamer/output_file.so -f /tmp/pics -s 5"}
+  proc, err = os.StartProcess("/usr/local/bin/mjpg_streamer", args, attrs)
+  if proc == nil {
+    fmt.Println("proc is null!")
+  } else {
+    fmt.Println(*proc)
+  }
   checkError(err)
 }
 
@@ -155,5 +168,9 @@ func getLatestPic() string{
   checkError(err)
   // We want the most recent file. Since the file are saved by
   // date, the last one will be the most recent
-  return files[len(files)].Name()
+  numPics := len(files)
+  if numPics == 0 {
+    return ""
+  }
+  return "/tmp/pics/" + files[numPics - 1].Name()
 }
