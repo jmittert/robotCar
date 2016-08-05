@@ -1,5 +1,6 @@
 BEGIN;
 DROP TABLE IF EXISTS images;
+DROP TABLE IF EXISTS readImg;
 CREATE TABLE images (
   id serial PRIMARY KEY,
   image bytea NOT NULL,
@@ -9,5 +10,9 @@ CREATE TABLE images (
   b2 smallint NOT NULL CHECK (b2 = 0 OR b2 = 1),
   rpwm smallint NOT NULL CHECK (rpwm >= 0 AND rpwm <= 100),
   lpwm smallint NOT NULL CHECK (lpwm >= 0 AND lpwm <= 100)
+);
+CREATE TABLE readImg (
+  id serial PRIMARY KEY,
+  image bytea NOT NULL,
 );
 COMMIT;
