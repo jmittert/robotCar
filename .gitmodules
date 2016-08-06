@@ -1,0 +1,3 @@
+[submodule "dbReadCv"]
+	path = dbReadCv
+	url = https://github.com/jmittert/dbReadCv

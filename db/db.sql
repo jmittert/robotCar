@@ -10,7 +10,8 @@ CREATE TABLE states (
   b1   smallint NOT NULL CHECK (b1 = 0 OR b1 = 1),
   b2   smallint NOT NULL CHECK (b2 = 0 OR b2 = 1),
   rpwm smallint NOT NULL CHECK (rpwm >= 0 AND rpwm <= 100),
-  lpwm smallint NOT NULL CHECK (lpwm >= 0 AND lpwm <= 100)
+  lpwm smallint NOT NULL CHECK (lpwm >= 0 AND lpwm <= 100),
+  CONSTRAINT uniq UNIQUE (a1,a2,b1,b2,rpwm,lpwm)
 );
 
 CREATE TABLE images (

@@ -50,6 +50,11 @@ func cleanup() {
   }
 }
 
+type stateList struct {
+  state rc.HwState
+  next *stateList
+}
+
 func main() {
   checkFlags()
   config := readConfig()
@@ -68,13 +73,23 @@ func main() {
     cleanup()
     os.Exit(0)
   }()
-  stmt, err := db.Prepare("INSERT INTO images (image, a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6, $7);")
+
+  // Set up the database statements
+  stateStmt, err := db.Prepare("INSERT INTO (a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT ON CONSTRAINT uniq DO UPDATE SET a1=states.a1 RETURNING id;")
   checkError(err)
+  imgStmt, err := db.Prepare("INSERT INTO images (image, state1, state2, state3, state4, state5) VALUES($1, $2, $3, $4, $5, $6);")
+  checkError(err)
+
+  // Track the current and last 4 state ids, default to 0
+  state := [5]int{0,0,0,0,0}
+  currState := 0
+
   for {
     conn = connect(serverAddr)
     last := time.Now()
     for {
       count, err := conn.Read(bytes)
+      // The new state we expect is 6 bytes
       if count != 6 || err == io.EOF {
         // On EOF, disconnect and look for another connection
         conn.Close()
@@ -83,15 +98,28 @@ func main() {
       hw.UnMarshalBinary(bytes)
       hw.Write()
       // Save the state every half second
-      if time.Since(last).Nanoseconds() > 500000000 {
+      if time.Since(last).Nanoseconds() > 20000000 {
+        row := stateStmt.QueryRow(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+        var id int
+        err = row.Scan(&id)
+        checkError(err)
+        state[currState] = id
+
         var img []byte
         fileName := getLatestPic()
         if fileName != "" {
           img, err = ioutil.ReadFile(fileName)
           checkError(err)
-          stmt.Exec(img, hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+          imgStmt.Exec(
+            img,
+            state[currState],
+            state[(currState + 1) % 5],
+            state[(currState + 2) % 5],
+            state[(currState + 3) % 5],
+            state[(currState + 4) % 5])
         }
         last = time.Now()
+        currState = (currState + 1) % 5
       }
     }
   }
