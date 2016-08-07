@@ -27,5 +27,9 @@ CREATE TABLE images (
 CREATE TABLE readImg (
   id serial PRIMARY KEY,
   image bytea NOT NULL
+  state1 integer references states(id) NOT NULL,
+  state2 integer references states(id) NOT NULL,
+  state3 integer references states(id) NOT NULL,
+  state4 integer references states(id) NOT NULL,
 );
 COMMIT;
