@@ -1,7 +1,7 @@
 BEGIN;
 DROP TABLE IF EXISTS images;
-DROP TABLE IF EXISTS states;
 DROP TABLE IF EXISTS readImg;
+DROP TABLE IF EXISTS states;
 
 CREATE TABLE states (
   id serial PRIMARY KEY,
@@ -17,19 +17,19 @@ CREATE TABLE states (
 CREATE TABLE images (
   id serial PRIMARY KEY,
   image bytea NOT NULL,
-  state1 integer references states(id) NOT NULL,
-  state2 integer references states(id) NOT NULL,
-  state3 integer references states(id) NOT NULL,
-  state4 integer references states(id) NOT NULL,
-  state5 integer references states(id) NOT NULL
+  state1 integer REFERENCES states(id) NOT NULL,
+  state2 integer REFERENCES states(id) NOT NULL,
+  state3 integer REFERENCES states(id) NOT NULL,
+  state4 integer REFERENCES states(id) NOT NULL,
+  state5 integer REFERENCES states(id) NOT NULL
 );
 
 CREATE TABLE readImg (
   id serial PRIMARY KEY,
-  image bytea NOT NULL
+  image bytea NOT NULL,
   state1 integer references states(id) NOT NULL,
   state2 integer references states(id) NOT NULL,
   state3 integer references states(id) NOT NULL,
-  state4 integer references states(id) NOT NULL,
+  state4 integer references states(id) NOT NULL
 );
 COMMIT;

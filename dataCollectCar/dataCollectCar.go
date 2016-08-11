@@ -75,7 +75,7 @@ func main() {
   }()
 
   // Set up the database statements
-  stateStmt, err := db.Prepare("INSERT INTO (a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT ON CONSTRAINT uniq DO UPDATE SET a1=states.a1 RETURNING id;")
+  stateStmt, err := db.Prepare("INSERT INTO states (a1, a2, b1, b2, lpwm, rpwm) VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT ON CONSTRAINT uniq DO UPDATE SET a1=states.a1 RETURNING id;")
   checkError(err)
   imgStmt, err := db.Prepare("INSERT INTO images (image, state1, state2, state3, state4, state5) VALUES($1, $2, $3, $4, $5, $6);")
   checkError(err)
@@ -86,19 +86,10 @@ func main() {
 
   for {
     conn = connect(serverAddr)
-    last := time.Now()
-    for {
-      count, err := conn.Read(bytes)
-      // The new state we expect is 6 bytes
-      if count != 6 || err == io.EOF {
-        // On EOF, disconnect and look for another connection
-        conn.Close()
-        break;
-      }
-      hw.UnMarshalBinary(bytes)
-      hw.Write()
-      // Save the state every half second
-      if time.Since(last).Nanoseconds() > 20000000 {
+    go func() {
+      for {
+        time.Sleep(20*time.Millisecond)
+        // Save the state every half second
         row := stateStmt.QueryRow(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
         var id int
         err = row.Scan(&id)
@@ -118,9 +109,19 @@ func main() {
             state[(currState + 3) % 5],
             state[(currState + 4) % 5])
         }
-        last = time.Now()
         currState = (currState + 1) % 5
       }
+    }()
+    for {
+      count, err := conn.Read(bytes)
+      // The new state we expect is 6 bytes
+      if count != 6 || err == io.EOF {
+        // On EOF, disconnect and look for another connection
+        conn.Close()
+        break;
+      }
+      hw.UnMarshalBinary(bytes)
+      hw.Write()
     }
   }
 }
@@ -158,11 +159,11 @@ func readConfig() Config {
 }
 
 func connect(addr string) net.Conn {
-    tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-    checkError(err)
-    conn, err := net.DialTCP("tcp", nil, tcpAddr)
-    checkError(err)
-    return conn
+  tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
+  checkError(err)
+  conn, err := net.DialTCP("tcp", nil, tcpAddr)
+  checkError(err)
+  return conn
 }
 
 func connectToDb(config Config) {
