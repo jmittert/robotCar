@@ -14,7 +14,6 @@ import (
   xbc "github.com/jmittert/xb360ctrl"
   "database/sql"
   _ "github.com/lib/pq"
-  "time"
 )
 
 type Config struct {
@@ -86,42 +85,45 @@ func main() {
 
   for {
     conn = connect(serverAddr)
-    go func() {
-      for {
-        time.Sleep(20*time.Millisecond)
-        // Save the state every half second
-        row := stateStmt.QueryRow(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
-        var id int
-        err = row.Scan(&id)
-        checkError(err)
-        state[currState] = id
-
-        var img []byte
-        fileName := getLatestPic()
-        if fileName != "" {
-          img, err = ioutil.ReadFile(fileName)
-          checkError(err)
-          imgStmt.Exec(
-            img,
-            state[currState],
-            state[(currState + 1) % 5],
-            state[(currState + 2) % 5],
-            state[(currState + 3) % 5],
-            state[(currState + 4) % 5])
-        }
-        currState = (currState + 1) % 5
-      }
-    }()
     for {
+      row := stateStmt.QueryRow(hw.A1, hw.A2, hw.B1, hw.B2, hw.LPWM, hw.RPWM)
+      var id int
+      err = row.Scan(&id)
+      checkError(err)
+      state[currState] = id
+
+      var img []byte
+      fileName := getLatestPic()
+      if fileName != "" {
+        img, err = ioutil.ReadFile(fileName)
+        checkError(err)
+        imgStmt.Exec(
+          img,
+          state[currState],
+          state[(currState + 1) % 5],
+          state[(currState + 2) % 5],
+          state[(currState + 3) % 5],
+          state[(currState + 4) % 5])
+      }
+      currState = (currState + 1) % 5
       count, err := conn.Read(bytes)
       // The new state we expect is 6 bytes
       if count != 6 || err == io.EOF {
         // On EOF, disconnect and look for another connection
         conn.Close()
-        break;
+        break
       }
       hw.UnMarshalBinary(bytes)
       hw.Write()
+      // state
+      conf := []byte{1}
+      _, err = conn.Write(conf)
+      if err != nil {
+        fmt.Println(err)
+        fmt.Println("!!!!!!")
+        conn.Close()
+        break
+      }
     }
   }
 }

@@ -5,9 +5,10 @@ import (
   "os"
   "os/signal"
   "syscall"
-  "time"
   rc "github.com/jmittert/robotCar/lib"
   xbc "github.com/jmittert/xb360ctrl"
+  "time"
+  "fmt"
 )
 
 func cleanup(fd int, conn net.Conn) {
@@ -33,38 +34,50 @@ func main() {
     os.Exit(0)
   }()
 
-
-  var xbState xbc.Xbc_state
-  xbc.PrepState(&xbState)
-
-  var hwState rc.HwState
-
-  var loopCount float64 = 0
-  last := time.Now()
-
   for {
     var err error
     conn, err = listener.Accept()
     if err != nil {
       continue
     }
+    fmt.Println("Connected")
 
+    start := time.Now()
+    var count int64 = 0
     for {
-      e := xbc.GetXbEvent(fd)
-      xbc.UpdateState(e, &xbState)
-      stateToHw(&xbState, &hwState)
+      // Update the current state
+      st := getState(fd)
 
-      // Send the state every 20ms
-      if time.Since(last).Nanoseconds() > 20000000 {
-        bin, _ := hwState.MarshalBinary()
-        _, err = conn.Write(bin)
-        if err != nil {
-          break
-        }
-        loopCount++
+      // Send the state
+      _, err = conn.Write(st)
+      if err != nil {
+        break
       }
+
+      // Wait for confirmation before continuing
+      var confirm []byte
+      fmt.Println("_")
+      _, err = conn.Read(confirm)
+      for err != nil {
+        _, err = conn.Read(confirm)
+        //fmt.Println("?")
+      }
+      fmt.Println("!")
+      count++
+      fmt.Println(time.Now().Sub(start).Nanoseconds()/count/1000000)
     }
   }
+}
+
+func getState(fd int) []byte {
+  var xbState xbc.Xbc_state
+  xbc.PrepState(&xbState)
+  var hwState rc.HwState
+  e := xbc.GetXbEvent(fd)
+  xbc.UpdateState(e, &xbState)
+  stateToHw(&xbState, &hwState)
+  bin, _ := hwState.MarshalBinary()
+  return bin
 }
 
 func calcPWM(state *xbc.Xbc_state) (leftPwm uint8, rightPwm uint8){
